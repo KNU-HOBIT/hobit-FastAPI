@@ -1,5 +1,5 @@
-#패스트 api
-"""uvicorn app:app --reload
+
+"""Fast API
 uvicorn app:app --host 0.0.0.0 --port 8080
 pip install pymysql
 pip install fastapi
