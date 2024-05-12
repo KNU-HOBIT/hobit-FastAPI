@@ -53,7 +53,7 @@ def sendDataStreaming():
             #return message
         except Exception as e:
             time.sleep(2)
-            # 큐가 비어 있으면 0.5초 대기 후 다시 시도
+            # 큐가 비어 있으면 2초 대기 후 다시 시도
             return "현재 큐가 비어있는 상ㅇ태"
 
 def start_thread(sensorTopic):
@@ -66,18 +66,16 @@ def terminate_and_disconnect_client(sensorTopic):
     client = get_client_for_topic(sensorTopic)
     thread = topic_to_thread_map.get(sensorTopic)
 
-"""
-async def receive_mqtt_data():    
-    time.sleep(5)
-    while True:
-        try:
-            # 메시지 큐에서 데이터 꺼내기 (이벤트 기다림)
-            message = message_queue.get(block=True, timeout=0.1)
-            print("receive_mqtt_data 테스트 1")
-            return message
-        except Exception as e:
-            time.sleep(5)
-            print("receive_mqtt_data 테스트 2")
-            # 큐가 비어 있으면 0.5초 대기 후 다시 시도
-            return None
-            """
+    if client and thread:
+        # 1. 스레드 종료
+        thread.join()  # 스레드 종료 대기
+
+        # 2. 구독 해제
+        client.unsubscribe(sensorTopic)  # 해당 토픽 구독 해제
+
+        # 3. 연결 끊기
+        client.disconnect()  # MQTT 브로커 연결 끊기
+
+        # 4. 클라이언트 및 스레드 정보 삭제
+        del topic_to_client_map[sensorTopic]
+        del topic_to_thread_map[sensorTopic]
