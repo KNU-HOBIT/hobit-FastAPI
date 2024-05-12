@@ -24,6 +24,9 @@ def get_sensor(sensorId : int , db: Session):
     sensor = db.query(Sensor).filter(Sensor.id==sensorId,Sensor.sensorDeleteYN=='Y').first()
     return Sensor(sensorName=sensor.sensorName,sensorTopic=sensor.sensorTopic,sensorType=sensor.sensorType,sensorEqpId=sensor.sensorEqpId)
 
+def get_sensor_topic(sensorId : int,db: Session):
+    sensor = db.query(Sensor).filter(Sensor.id==sensorId,Sensor.sensorDeleteYN=='Y').first()
+    return sensor.sensorTopic
 
 def update_sensor(sensorId :int ,updateSensor : UpdateSensor,db:Session):
     sensor=db.query(Sensor).filter(Sensor.id==sensorId,Sensor.sensorDeleteYN=='Y').first()

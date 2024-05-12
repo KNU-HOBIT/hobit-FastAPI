@@ -6,6 +6,8 @@ from fastapi import APIRouter,Depends
 from sensor import sensor_crud,sensor_schema
 
 from mqtt import mqtt_service
+from mqtt import mqtt_service
+import time
 
 app=APIRouter(
     prefix="/sensor"
@@ -14,13 +16,10 @@ app=APIRouter(
 @app.post(path="/create",description="센서 생성")
 async def create_new_sensor(new_sensor : sensor_schema.NewSensor,db:Session=Depends(get_db)):
     sensorId = sensor_crud.insert_sensor(new_sensor,db)
-    testtopic="AB"
-    mqtt_service.ThreadTest(testtopic)
+    sensorTopic=sensor_crud.get_sensor_topic(sensorId,db)
+    #sensorTopic='my-topic'
+    mqtt_service.create_mqtt_client(sensorTopic)
     return sensorId
-
-
-
-
 
 @app.get(path="/read",description="모든 센서 조회")
 async def read_all_sensor(db:Session=Depends(get_db)):
@@ -38,6 +37,10 @@ async def update_sensor(sensorId: int,update_sensor : sensor_schema.UpdateSensor
 
 @app.patch(path="/delete/{sensorId}",description="특정 센서 삭제")
 async def delete_sensor_yn(sensorId : int,db:Session=Depends(get_db)):
+    #sensorId = sensor_crud.insert_sensor(new_sensor,db)
+    #sensorTopic=sensor_crud.get_sensor_topic(sensorId,db)
+    sensorTopic='my-topic'
+    mqtt_service.terminate_and_disconnect_client(sensorTopic)
     return sensor_crud.alter_del_yn(sensorId,db)
 
 
