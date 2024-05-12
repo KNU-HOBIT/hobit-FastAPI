@@ -5,6 +5,8 @@ import sys
 import time
 import random
 from queue import Queue
+
+
 # MQTT 설정
 broker_address = '155.230.34.51'  # MQTT 브로커 주소
 port = 30083              # MQTT 포트 (기본값은 1883)
@@ -16,7 +18,7 @@ topic_to_thread_map = {}
 message_queue = Queue()  # 스레드 간 통신을 위한 큐
 
 def on_message(client, userdata, message):
-    time.sleep(5)
+    time.sleep(2)
     print("message received ", str(message.payload.decode("utf-8")))
     print("message topic= ", message.topic)
     print("message qos=", message.qos)
@@ -41,6 +43,18 @@ def create_mqtt_client(sensorTopic):
     thread.start()
     topic_to_thread_map[sensorTopic] = thread
 
+def sendDataStreaming():
+    time.sleep(5)
+    while True:
+        try:
+            # 메시지 큐에서 데이터 꺼내기 (이벤트 기다림)
+            message = message_queue.get(block=True, timeout=1)
+            yield message
+            #return message
+        except Exception as e:
+            time.sleep(2)
+            # 큐가 비어 있으면 0.5초 대기 후 다시 시도
+            return "현재 큐가 비어있는 상ㅇ태"
 
 def start_thread(sensorTopic):
     create_mqtt_client(sensorTopic)
@@ -52,7 +66,7 @@ def terminate_and_disconnect_client(sensorTopic):
     client = get_client_for_topic(sensorTopic)
     thread = topic_to_thread_map.get(sensorTopic)
 
-
+"""
 async def receive_mqtt_data():    
     time.sleep(5)
     while True:
@@ -66,3 +80,4 @@ async def receive_mqtt_data():
             print("receive_mqtt_data 테스트 2")
             # 큐가 비어 있으면 0.5초 대기 후 다시 시도
             return None
+            """

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 
 from fastapi import APIRouter,Depends
+from fastapi.responses import StreamingResponse
 
 from sensor import sensor_crud,sensor_schema
 
@@ -13,12 +14,19 @@ app=APIRouter(
     prefix="/sensor"
 )
 
+@app.get(path="/readData/{sensorId}")
+async def read_data(sensorId : int ,db:Session=Depends(get_db)):
+    sensorTopic=sensor_crud.get_sensor_topic(sensorId,db)
+    mqtt_service.start_thread(sensorTopic)
+    return StreamingResponse(mqtt_service.sendDataStreaming())
+
+
 @app.post(path="/create",description="센서 생성")
 async def create_new_sensor(new_sensor : sensor_schema.NewSensor,db:Session=Depends(get_db)):
     sensorId = sensor_crud.insert_sensor(new_sensor,db)
     sensorTopic=sensor_crud.get_sensor_topic(sensorId,db)
     #sensorTopic='my-topic'
-    mqtt_service.create_mqtt_client(sensorTopic)
+    #mqtt_service.create_mqtt_client(sensorTopic)
     return sensorId
 
 @app.get(path="/read",description="모든 센서 조회")

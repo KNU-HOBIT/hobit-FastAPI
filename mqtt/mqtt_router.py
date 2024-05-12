@@ -8,11 +8,7 @@ import time
 from database import get_db
 from sensor import sensor_crud,sensor_schema
 
-
-
-
 app=APIRouter()
-
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -34,9 +30,6 @@ async def websocket_endpoint(websocket: WebSocket):
             print("데이터를 받았습니다.",data)
             await websocket.send_text(str(data))  # React 서버에 데이터 전송
             print("데이터를 받았습니다.2",data)
-            #await websocket.send_text(str(data))
-            #time.sleep(1)
-
             # 3. 수신된 데이터 전송
             if data:
                 print("데이터 존재함")
