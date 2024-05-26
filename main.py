@@ -1,38 +1,31 @@
 
-"""Fast API
-uvicorn main:app --host 0.0.0.0 --port 8080
-pip install pymysql
-pip install fastapi
-pip install pydantic
-pip install SQLAlchemy
-pip install mysql
-pip install paho-mqtt"""
-
-from fastapi import FastAPI, Depends, Path, HTTPException
-import models 
-from database import engine
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-models.Base.metadata.create_all(bind=engine)
-
-from sensor import sensor_router
-from mqtt import mqtt_router
+# from sensor import sensor_router
+# from mqtt import mqtt_router
+from request.request_router import router as request_router
+from spark.spark_router import router as spark_router
 
 app=FastAPI()
 
-app.include_router(sensor_router.app,tags=["sensor"])
-app.include_router(mqtt_router.app,tags=["mqtt"])
+# app.include_router(sensor_router.app,tags=["sensor"])
+# app.include_router(mqtt_router.app,tags=["mqtt"])
+
+app.include_router(request_router)
+app.include_router(spark_router)
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:8899"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.get("/")
-def read_root():
-    return {"hello" : "world"}
+async def read_root():
+    return {"hello" : "world!!!"}
 
 

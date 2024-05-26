@@ -1,0 +1,21 @@
+spark_config:
+  master_url: "spark://155.230.34.51:32177"
+  driver_host: "155.230.34.51"
+  driver_bindAddress: "0.0.0.0"
+  executor_instances: 3
+  executor_cores: 4
+  executor_memory: "8G"
+  app_name: "FastAPI-Spark Integration"
+  kafka_bootstrap_servers: "155.230.34.51:32100,155.230.34.52:32100,155.230.34.53:32100"
+  kafka_jars: [
+    "jars/jsr305-3.0.0.jar",
+    "jars/commons-logging-1.1.3.jar",
+    "jars/commons-pool2-2.6.2.jar",
+    "jars/hadoop-client-api-3.3.1.jar",
+    "jars/hadoop-client-runtime-3.3.1.jar",
+    "jars/htrace-core4-4.1.0-incubating.jar",
+    "jars/kafka-clients-2.8.1.jar",
+    "jars/spark-token-provider-kafka-0-10_2.12-3.2.4.jar",
+    "jars/spark-sql-kafka-0-10_2.12-3.2.4.jar",
+    "jars/spark-streaming-kafka-0-10_2.12-3.2.4.jar"
+  ]
