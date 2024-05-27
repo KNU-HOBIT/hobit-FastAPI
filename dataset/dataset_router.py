@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Query
 from pydantic import BaseModel
 from typing import List, Optional
 import httpx
@@ -34,14 +34,16 @@ async def dataset_type():
     
     except httpx.RequestError as exc:
         raise HTTPException(status_code=500, detail=f"An error occurred while requesting data: {exc}")
+
 @app.get("/selection")
-async def dataset_selection(dataSelection: dataset_schema.datasetSelection):
+async def dataset_selection(bucket_name: str = Query(...), measurement: str = Query(...),tag_key : str=Query(...),tag_value : str=Query(...)):
     try:
         # HTTP 요청 보내기 (쿼리 파라미터로 데이터 포함)
         async with httpx.AsyncClient() as client:
-            url = f"http://155.230.36.25:3001/bucket-detail/?bucket_name={dataSelection.bucket_name}&measurement={dataSelection.measurement}"
+            url = f"http://155.230.36.25:3001/bucket-detail/?bucket_name={bucket_name}&measurement={measurement}&tag_key={tag_key}&tag_value={tah_value}"
             response = await client.get(url)
         
+
         # 요청 결과 반환
         if response.status_code == 200:
             data = response.json()
