@@ -8,6 +8,32 @@ import config.config_loader as config_loader
 
 spark_config = config_loader.get_config()['spark_config']
 repartition_num = spark_config["executor_instances"] * spark_config["executor_cores"] * 2
+
+
+spark = (
+    SparkSession.builder.master(spark_config['master_url'])
+    .appName(spark_config['app_name'])
+    .config("spark.driver.bindAddress", spark_config['driver_bindAddress'])
+    .config("spark.driver.host", spark_config['driver_host'])
+    .config("spark.cores.max", "48")
+    .config("spark.dynamicAllocation.enabled", "true")
+    .config("spark.dynamicAllocation.shuffleTracking.enabled", "true")
+    .config("spark.dynamicAllocation.initialExecutors", spark_config['executor_instances'])
+    .config("spark.dynamicAllocation.minExecutors", spark_config['executor_instances'])
+    .config("spark.executor.memory", spark_config['executor_memory'])
+    .config("spark.default.parallelism", repartition_num)
+    .config("spark.sql.shuffle.partitions", repartition_num)
+    .config("spark.sql.session.timeZone", "UTC")
+    .getOrCreate()
+)
+
+def print_spark_session_configuration(spark):
+    print("Current Spark configuration:")
+    for key, value in sorted(spark.sparkContext._conf.getAll(), key=lambda x: x[0]):
+        print(f"{key} = {value}")
+    pass
+print_spark_session_configuration(spark)
+
 schema = StructType(
         [
             StructField("index", IntegerType()),
@@ -44,31 +70,48 @@ schema = StructType(
             StructField("blk_dvc_id", StringType()),
         ]
     )
-spark = (
-    SparkSession.builder.master(spark_config['master_url'])
-    .appName(spark_config['app_name'])
-    .config("spark.driver.bindAddress", spark_config['driver_bindAddress'])
-    .config("spark.driver.host", spark_config['driver_host'])
-    .config("spark.cores.max", "24")
-    .config("spark.dynamicAllocation.enabled", "true")
-    .config("spark.dynamicAllocation.shuffleTracking.enabled", "true")
-    .config("spark.dynamicAllocation.initialExecutors", spark_config['executor_instances'])
-    .config("spark.dynamicAllocation.minExecutors", spark_config['executor_instances'])
-    .config("spark.executor.memory", spark_config['executor_memory'])
-    .config("spark.default.parallelism", repartition_num)
-    .config("spark.sql.shuffle.partitions", repartition_num)
-    .config("spark.sql.session.timeZone", "UTC")
-    .getOrCreate()
-)
+'''
+schema = StructType(
+        [
+            StructField("index", IntegerType()),
+            StructField("blk_no", StringType()),
+            StructField("press3", IntegerType()),
+            StructField("calc_press2", DoubleType()),
+            StructField("press4", IntegerType()),
+            StructField("calc_press1", DoubleType()),
+            StructField("calc_press4", DoubleType()),
+            StructField("calc_press3", DoubleType()),
+            StructField("bf_gps_lon", DoubleType()),
+            StructField("gps_lat", DoubleType()),
+            StructField("speed", DoubleType()),
+            StructField("in_dt", StringType()),
+            StructField("move_time", DoubleType()),
+            StructField("dvc_id", StringType()),
+            StructField("dsme_lat", DoubleType()),
+            StructField("press1", IntegerType()),
+            StructField("press2", IntegerType()),
+            StructField("work_status", IntegerType()),
+            StructField("timestamp", StringType()),
+            StructField("is_adjust", StringType()),
+            StructField("move_distance", IntegerType()),
+            StructField("weight", DoubleType()),
+            StructField("dsme_lon", DoubleType()),
+            StructField("in_user", StringType()),
+            StructField("eqp_id", IntegerType()),
+            StructField("blk_get_seq_id", IntegerType()),
+            StructField("lot_no", StringType()),
+            StructField("proj_no", StringType()),
+            StructField("gps_lon", DoubleType()),
+            StructField("seq_id", LongType()),
+            StructField("bf_gps_lat", DoubleType()),
+            StructField("blk_dvc_id", StringType()),
+        ]
+    )
+
     # .config("spark.executor.instances", spark_config['executor_instances'])
     # .config("spark.executor.cores", spark_config['executor_cores'])
     # .config("spark.executor.memory", spark_config['executor_memory'])
-def print_spark_session_configuration(spark):
-    print("Current Spark configuration:")
-    for key, value in sorted(spark.sparkContext._conf.getAll(), key=lambda x: x[0]):
-        print(f"{key} = {value}")
-    pass
-print_spark_session_configuration(spark)
+
 print("="*100)
 # 모든 설정 값 출력
 for key, value in spark_config.items():
@@ -220,6 +263,8 @@ console_query = query.writeStream \
 
 # kafka_query .awaitTermination()
 console_query.awaitTermination()
+'''
+
 
 def run_spark_kafka_job(start_time, end_time, total_messages, topic):
 
@@ -249,11 +294,11 @@ def read_from_kafka(spark, start_time, end_time ,topic):
     df = (
         df
         .selectExpr("CAST(value AS STRING) as value", "CAST(timestamp AS STRING) as createTime")
-        .withColumn("value", F.from_json("value", schema))
+        # .withColumn("value", F.from_json("value", schema))
     )
-    for field in schema.fields:
-        df = df.withColumn(field.name, df["value." + field.name])
-    df = df.drop("value")
+    # for field in schema.fields:
+    #     df = df.withColumn(field.name, df["value." + field.name])
+    # df = df.drop("value")
     return df
 
 def train_model(spark, df):
