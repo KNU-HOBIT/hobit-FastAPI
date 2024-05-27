@@ -40,7 +40,7 @@ async def dataset_selection(bucket_name: str = Query(...), measurement: str = Qu
     try:
         # HTTP 요청 보내기 (쿼리 파라미터로 데이터 포함)
         async with httpx.AsyncClient() as client:
-            url = f"http://155.230.36.25:3001/bucket-detail/?bucket_name={bucket_name}&measurement={measurement}&tag_key={tag_key}&tag_value={tah_value}"
+            url = f"http://155.230.36.25:3001/bucket-detail/?bucket_name={bucket_name}&measurement={measurement}&tag_key={tag_key}&tag_value={tag_value}"
             response = await client.get(url)
         
 
@@ -66,6 +66,11 @@ async def dataset_selection(bucket_name: str = Query(...), measurement: str = Qu
     
     except httpx.RequestError as exc:
         raise HTTPException(status_code=500, detail=f"An error occurred while requesting data: {exc}")
+#
+#(bucket_name: str = Query(...), measurement: str = Query(...),tag_key : str=Query(...),tag_value : str=Query(...)):
+# bucket_name
+
+
 
 @app.get("/option")
 async def dataset_option(datasetOption : dataset_schema.datasetOption):
