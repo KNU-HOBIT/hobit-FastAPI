@@ -5,7 +5,8 @@ import sys
 import time
 import random
 from queue import Queue
-
+import hobit_pb2
+import json
 
 # MQTT 설정
 broker_address = '155.230.34.51'  # MQTT 브로커 주소
@@ -17,16 +18,30 @@ topic_to_client_map = {}
 topic_to_thread_map = {}
 message_queue = Queue()  # 스레드 간 통신을 위한 큐
 
+def convert_proto_to_string(transport):
+    # transport 객체의 속성들을 문자열로 변환하여 반환하는 함수
+    attributes = [
+        f"{key}: {getattr(transport, key)}"
+        for key in transport.DESCRIPTOR.fields_by_name.keys()
+    ]
+    return "{" + ", ".join(attributes) + "}"
+
+
 def on_message(client, userdata, message):
-    time.sleep(2)
-    print("message received ", str(message.payload.decode("utf-8")))
-    print("message topic= ", message.topic)
-    print("message qos=", message.qos)
-    print("message retain flag= ", message.retain)
+    time.sleep(1)
     
-    message_queue.put(message.payload.decode("utf-8"))
-    print("메세지 큐 크기 확인")
-    print(message_queue.qsize())
+    # 프로토콜 버퍼 메시지 디코딩
+    transport = hobit_pb2.Transport()
+    transport.ParseFromString(message.payload)
+
+    # 프로토콜 버퍼 메시지를 문자열로 변환
+    message_string = convert_proto_to_string(transport)
+
+    # 문자열 형태의 메시지를 메시지 큐에 추가
+    message_queue.put(message_string)
+
+    print("디코딩된 프로토콜 버퍼 메시지를 문자열로 변환하여 메시지 큐에 추가했습니다.  ",message_string)
+    print("메세지 큐 크기 확인:", message_queue.qsize())
 
 
 def create_mqtt_client(sensorTopic):
@@ -44,7 +59,7 @@ def create_mqtt_client(sensorTopic):
     topic_to_thread_map[sensorTopic] = thread
 
 def sendDataStreaming():
-    time.sleep(5)
+    time.sleep(1)
     while True:
         try:
             # 메시지 큐에서 데이터 꺼내기 (이벤트 기다림)
@@ -52,7 +67,7 @@ def sendDataStreaming():
             yield f"data: {message}\n\n"
             #return message
         except Exception as e:
-            time.sleep(2)
+            time.sleep(1)
             # 큐가 비어 있으면 2초 대기 후 다시 시도
             return "현재 큐가 비어있는 상태"
 
