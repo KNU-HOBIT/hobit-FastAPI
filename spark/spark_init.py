@@ -28,7 +28,7 @@ def load_spark_session():
         .config("spark.executor.memory", spark_config['executor_memory'])
         .config("spark.default.parallelism", repartition_num)
         .config("spark.sql.shuffle.partitions", repartition_num)
-        .config("spark.sql.session.timeZone", "UTC")
+        # .config("spark.sql.session.timeZone", "UTC")
         # .config("spark.jars.packages", "org.apache.spark:spark-protobuf_2.12:3.5.1")
         .config("spark.jars", jar_urls)
         .getOrCreate()

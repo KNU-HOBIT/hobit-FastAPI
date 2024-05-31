@@ -1,12 +1,144 @@
-from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
 from pyspark.sql.protobuf.functions import from_protobuf
-import time
+from sqlalchemy.orm import Session
 
 import config.config_loader as config_loader
-import spark.spark_init as spark_initiator
+from models import Chunk  
+
+
+def make_chunk_in_elapsed( spark, db :Session, bucket, measurement, tag_key, tag_value,
+                           start_time, end_time, total_messages=None,
+                             topic="iot-sensor-data-p3-r1-retention1h"):
+    
+    # Define a function to create Unix timestamp in milliseconds
+    def to_unix_timestamp_ms(col_name):
+        return (col(col_name).cast("long") * 1000 +
+                col(col_name).cast("timestamp").substr(21, 3).cast("long"))
+
+    # Define a window specification to calculate the difference between consecutive timestamps
+    window_spec = Window.orderBy("timestamp")  
+
+    df = read_from_kafka(spark, start_time, end_time, topic)
+    
+    df = (df
+        # Convert the timestamp column to a timestamp type
+        .withColumn("timestamp", col("timestamp").cast("timestamp"))
+        # Sort the DataFrame by timestamp
+        .orderBy("timestamp")
+        .withColumn("prev_timestamp", lag("timestamp", 1).over(window_spec)) 
+    )
+
+    df.na.fill(0) # NULL -> Zero on prev_timestamp
+
+    df = (df
+        # Calculate the difference between consecutive timestamps in milliseconds
+        .withColumn("time_diff", to_unix_timestamp_ms("timestamp") - 
+                                to_unix_timestamp_ms("prev_timestamp"))
+        # Identify the start of each new chunk (greater than 10 min)                   
+        .withColumn("is_new_chunk", when((col("time_diff") > 600000), 1).otherwise(0))
+        # Use cumulative sum to assign chunk IDs
+        .withColumn("chunk_id", sum("is_new_chunk").over(window_spec)) 
+    )
+
+    # Calculate the duration of each chunk by finding the max and min timestamp per chunk and their difference in milliseconds
+    chunk = (
+        df.groupBy("chunk_id")
+        .agg(
+            min("timestamp").alias("start_timestamp"),
+            max("timestamp").alias("end_timestamp"),
+            count("*").alias("count")
+        )
+        .filter(col("count") >= 2)  # Filter out groups with count less than 5
+        .withColumn("start_timestamp_ms", to_unix_timestamp_ms("start_timestamp"))
+        .withColumn("end_timestamp_ms", to_unix_timestamp_ms("end_timestamp"))
+        .withColumn("chunk_duration", col("end_timestamp_ms") - col("start_timestamp_ms"))
+        .withColumn("start_timestamp_unix", col("start_timestamp_ms"))
+        .withColumn("end_timestamp_unix", col("end_timestamp_ms"))
+        .drop("start_timestamp_ms", "end_timestamp_ms")
+    )
+
+    # chunk_durations.printSchema()
+    chunk.show(truncate=False)
+    # +--------+-----------------------+-----------------------+-----+--------------+--------------------+------------------+
+    # |chunk_id|start_timestamp        |end_timestamp          |count|chunk_duration|start_timestamp_unix|end_timestamp_unix|
+    # +--------+-----------------------+-----------------------+-----+--------------+--------------------+------------------+
+    # |0       |2020-09-01 01:07:35.165|2020-09-01 02:33:14.03 |4837 |5138838       |1598890055165       |1598895194003     |
+    # |1       |2020-09-01 04:43:55.001|2020-09-01 05:37:43.11 |3218 |3228010       |1598903035001       |1598906263011     |
+    # |2       |2020-09-01 08:39:50.622|2020-09-01 10:28:28.214|6459 |6517592       |1598917190622       |1598923708214     |
+    # +--------+-----------------------+-----------------------+-----+--------------+--------------------+------------------+
+
+    # Sum up all chunk durations to get the cumulative run time
+    
+    # total_cumulative_run_time = chunk.agg(sum("chunk_duration").alias("total_run_time")).collect()[0]["total_run_time"]
+    # print("total_cumulative_run_time", total_cumulative_run_time)
+
+    if total_messages:
+        print("baseline count:", total_messages)
+    # print("record count : ",df.count())
+
+    # Store the chunk information in the database
+    for row in chunk.collect():
+        new_chunk = Chunk(
+            bucket=bucket,
+            measurement=measurement,
+            tagKey=tag_key,
+            tagValue=tag_value,
+            startTs=row.start_timestamp_unix,
+            endTs=row.end_timestamp_unix,
+            chunkDuration=row.chunk_duration,
+            count=row['count']
+        )
+        db.add(new_chunk)
+    db.commit()
+
+def read_from_kafka(spark, start_time, end_time ,topic):
+
+    df = (
+        spark.read.format("kafka")
+        .option("kafka.bootstrap.servers", config_loader.get_config()['spark_config']['kafka_bootstrap_servers'])
+        .option("subscribe", topic)
+        .option("startingOffsetsByTimestampStrategy", "latest")
+        .option("startingTimestamp", str(start_time))
+        .option("endingTimestamp", str(end_time))
+        .load()
+    ) 
+    
+    df = (
+        df
+        .selectExpr("CAST(value AS STRING) as value", "CAST(timestamp AS STRING) as createTime")
+        .withColumn("value", unbase64("value"))
+        .withColumn("decoded_value", from_protobuf("value", "Transport", descFilePath="proto/hobit.desc"))
+        .select("createTime", "decoded_value.*")
+    )
+
+    return df
+
+
+
+def train_model(spark, df):
+    # 데이터 전처리 및 피처 엔지니어링
+    # 모델 학습 및 평가
+    print("in train_model" + df)
+    print("모델학습..!")
+    pass
+
+def stop_spark_session(spark):
+    """
+    Spark 세션을 종료하고 세션에 관련된 정보를 로그로 기록합니다.
+    
+    Parameters:
+        spark (SparkSession): 종료할 Spark 세션 객체
+    """
+    session_info = f"Stopping Spark session with App Name: {spark.sparkContext.appName}, App ID: {spark.sparkContext.applicationId}"
+    spark.stop()
+    print(session_info)
+    pass
+
+
+
+
 
 '''
 schema = StructType(
@@ -239,108 +371,6 @@ console_query = query.writeStream \
 # kafka_query .awaitTermination()
 console_query.awaitTermination()
 '''
-
-def run_spark_kafka_job(start_time, end_time, total_messages, topic):
-
-    # Define a window specification to calculate the difference between consecutive timestamps
-    window_spec = Window.orderBy("timestamp")  
-
-    df = read_from_kafka(spark_initiator.spark, start_time, end_time, topic)
-    
-    df = (df
-        # Convert the timestamp column to a timestamp type
-        .withColumn("timestamp", col("timestamp").cast("timestamp"))
-        # Sort the DataFrame by timestamp
-        .orderBy("timestamp")
-        .withColumn("prev_timestamp", lag("timestamp", 1).over(window_spec)) 
-    )
-
-    df.na.fill(0)
-
-    df = (df
-        # Calculate the difference between consecutive timestamps in milliseconds
-        .withColumn("time_diff", (col("timestamp").cast("long") * 1000 + col("timestamp").cast("timestamp").substr(21, 3).cast("long")) - 
-                                (col("prev_timestamp").cast("long") * 1000 + col("prev_timestamp").cast("timestamp").substr(21, 3).cast("long")))
-        # Identify the start of each new chunk (greater than 10 min)                   
-        .withColumn("is_new_chunk", when((col("time_diff") > 600000), 1).otherwise(0))
-        # Use cumulative sum to assign chunk IDs
-        .withColumn("chunk_id", sum("is_new_chunk").over(window_spec)) 
-    )
-
-    # Calculate the duration of each chunk by finding the max and min timestamp per chunk and their difference in milliseconds
-    chunk_durations = df.groupBy("chunk_id").agg(
-        min("timestamp").alias("start_timestamp"),
-        max("timestamp").alias("end_timestamp"),
-        (max("timestamp").cast("long") * 1000 + max("timestamp").substr(21, 3).cast("long") - (min("timestamp").cast("long") * 1000 + min("timestamp").substr(21, 3).cast("long"))).alias("chunk_duration"),
-        count("*").alias("count")
-        # collect_list("weight").alias("weight_list")
-    )
-
-    # chunk_durations.printSchema()
-    chunk_durations.show(truncate=False)
-
-                    # +--------+-----------------------+-----------------------+--------------+-----+ 
-                    # |chunk_id|start_timestamp        |end_timestamp          |chunk_duration|count|
-                    # +--------+-----------------------+-----------------------+--------------+-----+
-                    # |0       |2020-09-01 01:07:35.165|2020-09-01 02:33:14.03 |5138838       |4837 |
-                    # |1       |2020-09-01 04:43:55.001|2020-09-01 05:37:43.11 |3228010       |3218 |
-                    # |2       |2020-09-01 08:39:50.622|2020-09-01 10:28:28.214|6517592       |6459 |
-                    # |3       |2020-09-01 10:58:54.698|2020-09-01 11:33:00.14 |2045316       |1998 |
-                    # +--------+-----------------------+-----------------------+--------------+-----+
-    
-    # Sum up all chunk durations to get the cumulative run time
-    
-    total_cumulative_run_time = chunk_durations.agg(sum("chunk_duration").alias("total_run_time")).collect()[0]["total_run_time"]
-    print("total_cumulative_run_time", total_cumulative_run_time)
-
-
-    print("baseline count:", total_messages)
-    print("record count : ",df.count())
-
-    return "모델 훈련 및 평가 완료"
-
-
-
-def read_from_kafka(spark, start_time, end_time ,topic):
-
-    df = (
-        spark.read.format("kafka")
-        .option("kafka.bootstrap.servers", config_loader.get_config()['spark_config']['kafka_bootstrap_servers'])
-        .option("subscribe", topic)
-        .option("startingOffsetsByTimestampStrategy", "latest")
-        .option("startingTimestamp", str(start_time))
-        .option("endingTimestamp", str(end_time))
-        .load()
-    ) 
-    
-    df = (
-        df
-        .selectExpr("CAST(value AS STRING) as value", "CAST(timestamp AS STRING) as createTime")
-        .withColumn("value", unbase64("value"))
-        .withColumn("decoded_value", from_protobuf("value", "Transport", descFilePath="proto/hobit.desc"))
-        .select("createTime", "decoded_value.*")
-    )
-    return df
-
-def train_model(spark, df):
-    # 데이터 전처리 및 피처 엔지니어링
-    # 모델 학습 및 평가
-    print("in train_model" + df)
-    print("모델학습..!")
-    pass
-
-def stop_spark_session(spark):
-    """
-    Spark 세션을 종료하고 세션에 관련된 정보를 로그로 기록합니다.
-    
-    Parameters:
-        spark (SparkSession): 종료할 Spark 세션 객체
-    """
-    session_info = f"Stopping Spark session with App Name: {spark.sparkContext.appName}, App ID: {spark.sparkContext.applicationId}"
-    spark.stop()
-    print(session_info)
-    pass
-
 # 나중에, 모델 학습 코드 포팅할 때 필요한 코드들.
 '''
 from pyspark.sql.functions import col, abs, mean, expr, substring, udf
