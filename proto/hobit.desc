@@ -1,0 +1,45 @@
+
+‚
+hobit.proto"ò
+	Transport
+index (Rindex
+blk_no (	RblkNo
+press3 (Rpress3
+calc_press2 (R
+calcPress2
+press4 (Rpress4
+calc_press1 (R
+calcPress1
+calc_press4 (R
+calcPress4
+calc_press3 (R
+calcPress3
+
+bf_gps_lon	 (RbfGpsLon
+gps_lat
+ (RgpsLat
+speed (Rspeed
+in_dt (	RinDt
+	move_time (RmoveTime
+dvc_id (	RdvcId
+dsme_lat (RdsmeLat
+press1 (Rpress1
+press2 (Rpress2
+work_status (R
+workStatus
+	timestamp (	R	timestamp
+	is_adjust (	RisAdjust#
+move_distance (RmoveDistance
+weight (Rweight
+dsme_lon (RdsmeLon
+in_user (	RinUser
+eqp_id (ReqpId#
+blk_get_seq_id (RblkGetSeqId
+lot_no (	RlotNo
+proj_no (	RprojNo
+gps_lon (RgpsLon
+seq_id (RseqId
+
+bf_gps_lat  (RbfGpsLat
+
+blk_dvc_id! (	RblkDvcId

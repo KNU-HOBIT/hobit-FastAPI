@@ -1,39 +1,14 @@
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql import functions as F
+from pyspark.sql.functions import *
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
+from pyspark.sql.protobuf.functions import from_protobuf
+import time
 
 import config.config_loader as config_loader
+import spark.spark_init as spark_initiator
 
-
-spark_config = config_loader.get_config()['spark_config']
-repartition_num = spark_config["executor_instances"] * spark_config["executor_cores"] * 2
-
-
-spark = (
-    SparkSession.builder.master(spark_config['master_url'])
-    .appName(spark_config['app_name'])
-    .config("spark.driver.bindAddress", spark_config['driver_bindAddress'])
-    .config("spark.driver.host", spark_config['driver_host'])
-    .config("spark.cores.max", "48")
-    .config("spark.dynamicAllocation.enabled", "true")
-    .config("spark.dynamicAllocation.shuffleTracking.enabled", "true")
-    .config("spark.dynamicAllocation.initialExecutors", spark_config['executor_instances'])
-    .config("spark.dynamicAllocation.minExecutors", spark_config['executor_instances'])
-    .config("spark.executor.memory", spark_config['executor_memory'])
-    .config("spark.default.parallelism", repartition_num)
-    .config("spark.sql.shuffle.partitions", repartition_num)
-    .config("spark.sql.session.timeZone", "UTC")
-    .getOrCreate()
-)
-
-def print_spark_session_configuration(spark):
-    print("Current Spark configuration:")
-    for key, value in sorted(spark.sparkContext._conf.getAll(), key=lambda x: x[0]):
-        print(f"{key} = {value}")
-    pass
-print_spark_session_configuration(spark)
-
+'''
 schema = StructType(
         [
             StructField("index", IntegerType()),
@@ -70,7 +45,7 @@ schema = StructType(
             StructField("blk_dvc_id", StringType()),
         ]
     )
-'''
+
 schema = StructType(
         [
             StructField("index", IntegerType()),
@@ -265,25 +240,72 @@ console_query = query.writeStream \
 console_query.awaitTermination()
 '''
 
-
 def run_spark_kafka_job(start_time, end_time, total_messages, topic):
 
-    df = read_from_kafka(spark, start_time, end_time, topic)
-    df.printSchema()
-    df.show(n=1, truncate=False)
+    # Define a window specification to calculate the difference between consecutive timestamps
+    window_spec = Window.orderBy("timestamp")  
+
+    df = read_from_kafka(spark_initiator.spark, start_time, end_time, topic)
+    
+    df = (df
+        # Convert the timestamp column to a timestamp type
+        .withColumn("timestamp", col("timestamp").cast("timestamp"))
+        # Sort the DataFrame by timestamp
+        .orderBy("timestamp")
+        .withColumn("prev_timestamp", lag("timestamp", 1).over(window_spec)) 
+    )
+
+    df.na.fill(0)
+
+    df = (df
+        # Calculate the difference between consecutive timestamps in milliseconds
+        .withColumn("time_diff", (col("timestamp").cast("long") * 1000 + col("timestamp").cast("timestamp").substr(21, 3).cast("long")) - 
+                                (col("prev_timestamp").cast("long") * 1000 + col("prev_timestamp").cast("timestamp").substr(21, 3).cast("long")))
+        # Identify the start of each new chunk (greater than 10 min)                   
+        .withColumn("is_new_chunk", when((col("time_diff") > 600000), 1).otherwise(0))
+        # Use cumulative sum to assign chunk IDs
+        .withColumn("chunk_id", sum("is_new_chunk").over(window_spec)) 
+    )
+
+    # Calculate the duration of each chunk by finding the max and min timestamp per chunk and their difference in milliseconds
+    chunk_durations = df.groupBy("chunk_id").agg(
+        min("timestamp").alias("start_timestamp"),
+        max("timestamp").alias("end_timestamp"),
+        (max("timestamp").cast("long") * 1000 + max("timestamp").substr(21, 3).cast("long") - (min("timestamp").cast("long") * 1000 + min("timestamp").substr(21, 3).cast("long"))).alias("chunk_duration"),
+        count("*").alias("count")
+        # collect_list("weight").alias("weight_list")
+    )
+
+    # chunk_durations.printSchema()
+    chunk_durations.show(truncate=False)
+
+                    # +--------+-----------------------+-----------------------+--------------+-----+ 
+                    # |chunk_id|start_timestamp        |end_timestamp          |chunk_duration|count|
+                    # +--------+-----------------------+-----------------------+--------------+-----+
+                    # |0       |2020-09-01 01:07:35.165|2020-09-01 02:33:14.03 |5138838       |4837 |
+                    # |1       |2020-09-01 04:43:55.001|2020-09-01 05:37:43.11 |3228010       |3218 |
+                    # |2       |2020-09-01 08:39:50.622|2020-09-01 10:28:28.214|6517592       |6459 |
+                    # |3       |2020-09-01 10:58:54.698|2020-09-01 11:33:00.14 |2045316       |1998 |
+                    # +--------+-----------------------+-----------------------+--------------+-----+
+    
+    # Sum up all chunk durations to get the cumulative run time
+    
+    total_cumulative_run_time = chunk_durations.agg(sum("chunk_duration").alias("total_run_time")).collect()[0]["total_run_time"]
+    print("total_cumulative_run_time", total_cumulative_run_time)
+
 
     print("baseline count:", total_messages)
-    df = df.repartition(repartition_num)
     print("record count : ",df.count())
-    
-    
+
     return "모델 훈련 및 평가 완료"
+
+
 
 def read_from_kafka(spark, start_time, end_time ,topic):
 
     df = (
         spark.read.format("kafka")
-        .option("kafka.bootstrap.servers", spark_config['kafka_bootstrap_servers'])
+        .option("kafka.bootstrap.servers", config_loader.get_config()['spark_config']['kafka_bootstrap_servers'])
         .option("subscribe", topic)
         .option("startingOffsetsByTimestampStrategy", "latest")
         .option("startingTimestamp", str(start_time))
@@ -294,11 +316,10 @@ def read_from_kafka(spark, start_time, end_time ,topic):
     df = (
         df
         .selectExpr("CAST(value AS STRING) as value", "CAST(timestamp AS STRING) as createTime")
-        # .withColumn("value", F.from_json("value", schema))
+        .withColumn("value", unbase64("value"))
+        .withColumn("decoded_value", from_protobuf("value", "Transport", descFilePath="proto/hobit.desc"))
+        .select("createTime", "decoded_value.*")
     )
-    # for field in schema.fields:
-    #     df = df.withColumn(field.name, df["value." + field.name])
-    # df = df.drop("value")
     return df
 
 def train_model(spark, df):
@@ -319,3 +340,134 @@ def stop_spark_session(spark):
     spark.stop()
     print(session_info)
     pass
+
+# 나중에, 모델 학습 코드 포팅할 때 필요한 코드들.
+'''
+from pyspark.sql.functions import col, abs, mean, expr, substring, udf
+from pyspark.ml.feature import StringIndexer
+
+
+def train_test_split(df, th):
+    df = df.na.drop(subset=['일시'])
+    train = df.filter(col('일시').substr(1, 8).cast(IntegerType()) < th)
+    test = df.filter(col('일시').substr(1, 8).cast(IntegerType()) >= th)
+    return train, test
+
+def preprocess_x(df):
+    to_remove_columns = ['num_date_time', '일시', '일조(hr)', '일사(MJ/m2)']
+    df = df.fillna(0)   
+    
+    # 시계열 특성을 학습에 반영하기 위해 일시를 월, 일, 시간으로 나눕니다
+    df = df.withColumn('month', substring('일시', 5, 2).cast(IntegerType()))
+    df = df.withColumn('day', substring('일시', 7, 2).cast(IntegerType()))
+    df = df.withColumn('time', substring('일시', 10, 2).cast(IntegerType()))
+    
+    
+    
+    df = df.join(building_sdf.select('건물번호', '건물유형', '연면적(m2)'), on='건물번호', how='left')
+    df = df.dropDuplicates()
+    
+    
+    # '건물유형'을 카테고리형 코드로 변환
+    # building_type_indexer = StringIndexer(inputCol='건물유형', outputCol='건물유형_index')
+    # df = building_type_indexer.fit(df).transform(df)
+    # df = df.drop('건물유형').withColumnRenamed('건물유형_index', '건물유형')
+    
+    # 불필요한 컬럼 삭제
+    for c in to_remove_columns:
+        if c in df.columns:
+            df = df.drop(c)
+            
+    df.show(20, truncate=False)
+    return df
+
+date_th = 20220820
+
+train_df, valid_df = train_test_split(train_sdf, date_th)
+
+
+#print("train_df DataFrame show:", train_df.show())
+#print("valid_df DataFrame show:", valid_df.show())
+
+# 데이터 분할 후 각 데이터프레임의 크기를 확인합니다.
+print("train_df shape(split 후):", train_df.count(), len(train_df.columns))
+print("valid_df shape(split 후):", valid_df.count(), len(valid_df.columns))
+
+train_1 = preprocess_x(train_df)
+#train_y = train_df.select("전력소비량(kWh)")
+
+# 전처리 후 데이터프레임의 크기를 확인합니다.
+print("train_1 shape:", train_1.count(), len(train_1.columns))
+#print("Train Y shape:", train_y.count(), len(train_y.columns))
+
+valid_1 = preprocess_x(valid_df)
+#valid_y = valid_df.select("전력소비량(kWh)")
+
+print("valid_1 shape:", valid_1.count(), len(valid_1.columns))
+#print("Validation Y shape:", valid_y.count(), len(valid_y.columns))
+
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.feature import VectorAssembler
+from tqdm import tqdm
+
+def validate_multi(valid_1, models):
+    """
+    Args:
+        models: dict, {1: model1, 2: model2, ..., 100: model100}
+    """
+    
+    mse_eval = RegressionEvaluator(labelCol='전력소비량(kWh)', predictionCol='prediction', metricName='mse')
+    rmse_eval = RegressionEvaluator(labelCol='전력소비량(kWh)', predictionCol='prediction', metricName='rmse')
+    r2_eval = RegressionEvaluator(labelCol='전력소비량(kWh)', predictionCol='prediction', metricName='r2')
+
+    predictions=[0 for _ in range(101)]
+    for i in tqdm(range(1, 101)):
+        aB = valid_1.filter(col('건물번호') == i)
+        
+        aB = aB.drop('건물번호', '건물유형', '연면적(m2)', '냉방면적(m2)', 'createTime')
+        
+        feature_cols = [c for c in aB.columns if c != '전력소비량(kWh)']
+        assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
+        aB = assembler.transform(aB).select("features", "전력소비량(kWh)")
+        
+        
+        predictions[i] = models[i].transform(aB)
+        print('mse:', mse_eval.evaluate(predictions[i]), 'rmse:', rmse_eval.evaluate(predictions[i]), 'r2:', r2_eval.evaluate(predictions[i]))
+        
+    return predictions
+
+from pyspark.ml.regression import RandomForestRegressor
+
+def train_multiple_models(train_1, n_estimators=100):
+    models = {}
+    
+    for i in tqdm(range(1, 101)):
+        aBuilding = train_1.filter(col('건물번호') == i)
+        
+        aBuilding = aBuilding.drop('건물번호', '건물유형', '연면적(m2)', '냉방면적(m2)', 'createTime')
+        
+        #feature 벡터화
+        feature_cols = [c for c in aBuilding.columns if c != '전력소비량(kWh)']
+        assembler = VectorAssembler(inputCols = feature_cols, outputCol = "features")
+        aBuilding = assembler.transform(aBuilding).select("features", "전력소비량(kWh)")
+        
+        rf = RandomForestRegressor(featuresCol='features', labelCol='전력소비량(kWh)', numTrees=n_estimators)
+        aBuilding = aBuilding.repartition(200)
+        model = rf.fit(aBuilding)
+        
+        models[i] = model
+        
+        
+    return models
+
+models1 = train_multiple_models(train_1)
+
+predictions = []
+predictions = validate_multi(valid_1, models1)
+
+
+predictions[5].show()
+
+
+predictions[5].show(predictions[5].count(), truncate=False)
+'''
