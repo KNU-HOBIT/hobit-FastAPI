@@ -1,12 +1,8 @@
 from sqlalchemy.orm import Session
 from database import get_db
-
 from fastapi import APIRouter,Depends
 from fastapi.responses import StreamingResponse
-
 from sensor import sensor_crud,sensor_schema
-
-from mqtt import mqtt_service
 from mqtt import mqtt_service
 import time
 from starlette.responses import JSONResponse
@@ -25,7 +21,7 @@ async def read_data(db: Session = Depends(get_db)):
     # 2. 리스트를 돌면서
     for sensor in sensors:
         sensorTopic = sensor_crud.get_sensor_topic(sensor.id, db)  # 센서 객체의 ID 사용
-        mqtt_service.terminate_and_disconnect_client(sensorTopic)  # 스레드 시작
+        mqtt_service.terminate_and_disconnect_client(sensorTopic)  # 스레드 종료
 
     return JSONResponse({"message": "연결 끊기 성공"})
 
