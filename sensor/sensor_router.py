@@ -1,12 +1,8 @@
 from sqlalchemy.orm import Session
 from database import get_db
-
 from fastapi import APIRouter,Depends
 from fastapi.responses import StreamingResponse
-
 from sensor import sensor_crud,sensor_schema
-
-from mqtt import mqtt_service
 from mqtt import mqtt_service
 import time
 from starlette.responses import JSONResponse

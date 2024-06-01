@@ -12,7 +12,6 @@ def print_spark_session_configuration(spark):
 def load_spark_session():
     global spark
     spark_config = config_loader.get_config()['spark_config']
-    # repartition_num = spark_config["executor_instances"] * spark_config["executor_cores"] * 2
     repartition_num = 16 * 2
     jar_urls = ",".join(spark_config["kafka_jars"])
     spark = (
@@ -28,8 +27,6 @@ def load_spark_session():
         .config("spark.executor.memory", spark_config['executor_memory'])
         .config("spark.default.parallelism", repartition_num)
         .config("spark.sql.shuffle.partitions", repartition_num)
-        # .config("spark.sql.session.timeZone", "UTC")
-        # .config("spark.jars.packages", "org.apache.spark:spark-protobuf_2.12:3.5.1")
         .config("spark.jars", jar_urls)
         .getOrCreate()
     )

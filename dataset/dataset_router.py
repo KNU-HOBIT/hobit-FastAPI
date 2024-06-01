@@ -11,8 +11,6 @@ from dataset import dataset_schema
 app=APIRouter(
     prefix="/dataset"
 )
-# IP 주소 :155.230.36.25
-# port : 3001
 
 
 
@@ -24,11 +22,7 @@ async def dataset_type():
         
         if response.status_code == 200:
             data = response.json()
-            # 응답이 리스트인지 확인
-            #if isinstance(data, list) and all(isinstance(item, dict) and 'bucket_name' in item and 'measurement' in item for item in data):
             return JSONResponse(content= data)    
-            #else:
-                #raise HTTPException(status_code=500, detail="Invalid response format: Expected a list of dictionaries with 'bucket_name' and 'measurement'")
         else:
             raise HTTPException(status_code=response.status_code, detail="Failed to fetch data from the server")
     
@@ -67,9 +61,7 @@ async def dataset_selection(bucket_name: str = Query(...), measurement: str = Qu
     
     except httpx.RequestError as exc:
         raise HTTPException(status_code=500, detail=f"An error occurred while requesting data: {exc}")
-#
-#(bucket_name: str = Query(...), measurement: str = Query(...),tag_key : str=Query(...),tag_value : str=Query(...)):
-# bucket_name
+
 
 
 

@@ -17,3 +17,7 @@ spark_config:
     "jars/commons-pool2-2.11.1.jar",
     "jars/spark-protobuf_2.12-3.5.1.jar"
   ]
+  mqtt_broker_address: "155.230.34.51"  # MQTT 브로커 주소
+  mqtt_port: 30083              # MQTT 포트 (기본값은 1883)
+  mqtt_username: 'admin'        # MQTT 유저 이름
+  mqtt_password: 'password123'  # MQTT 비밀번호

@@ -7,13 +7,24 @@ import random
 from queue import Queue
 import proto.hobit_pb2 as hobit_pb2
 import json
+import yaml
 
-# MQTT 설정
-broker_address = '155.230.34.51'  # MQTT 브로커 주소
-port = 30083              # MQTT 포트 (기본값은 1883)
-username = 'admin'        # MQTT 유저 이름
-password = 'password123'  # MQTT 비밀번호
+# config.yaml 파일에서 설정 로드
+with open('./config/config.yaml', 'r') as stream:
+    try:
+        config = yaml.safe_load(stream)
+        mqtt_broker_address = config['spark_config']['mqtt_broker_address']
+        mqtt_port = config['spark_config']['mqtt_port']
+        mqtt_username = config['spark_config']['mqtt_username']
+        mqtt_password = config['spark_config']['mqtt_password']
+    except yaml.YAMLError as exc:
+        print(exc)
 
+# 나머지 코드에서 사용할 수 있도록 설정값 할당
+broker_address = mqtt_broker_address
+port = mqtt_port
+username = mqtt_username
+password = mqtt_password
 topic_to_client_map = {}
 topic_to_thread_map = {}
 message_queue = Queue()  # 스레드 간 통신을 위한 큐
@@ -98,5 +109,3 @@ def terminate_and_disconnect_client(sensorTopic):
         # 4. 클라이언트 및 스레드 정보 삭제
         del topic_to_client_map[sensorTopic]
         del topic_to_thread_map[sensorTopic]    
-
-
