@@ -84,7 +84,7 @@ def terminate_and_disconnect_client(sensorTopic):
     
     if client and thread:
         # 1. 루프 정지
-        client.loop_stop(force=True)  # 강제로 루프 정지
+        client.loop_stop()  # 강제로 루프 정지
 
         # 2. 구독 해제
         client.unsubscribe(sensorTopic)
