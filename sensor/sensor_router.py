@@ -17,7 +17,7 @@ app=APIRouter(
 
 
 @app.get("/disconnectionStreamingData")
-async def read_data(db: Session = Depends(get_db)):
+async def disconnection_data(db: Session = Depends(get_db)):
 
     # 1. DB에서 모든 센서 객체 가져오기
     sensors = sensor_crud.list_all_sensor_id(db)
@@ -25,7 +25,7 @@ async def read_data(db: Session = Depends(get_db)):
     # 2. 리스트를 돌면서
     for sensor in sensors:
         sensorTopic = sensor_crud.get_sensor_topic(sensor.id, db)  # 센서 객체의 ID 사용
-        mqtt_service.terminate_and_disconnect_client(sensorTopic)  # 스레드 시작
+        mqtt_service.terminate_and_disconnect_client(sensorTopic)  # 스레드 종료
 
     return JSONResponse({"message": "연결 끊기 성공"})
 

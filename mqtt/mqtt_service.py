@@ -5,7 +5,7 @@ import sys
 import time
 import random
 from queue import Queue
-import hobit_pb2
+import proto.hobit_pb2 as hobit_pb2
 import json
 
 # MQTT 설정
@@ -57,6 +57,7 @@ def create_mqtt_client(sensorTopic):
     thread = threading.Thread(target=client.loop_forever)
     thread.start()
     topic_to_thread_map[sensorTopic] = thread
+    topic_to_client_map[sensorTopic] = client
 
 def sendDataStreaming():
     time.sleep(1)
@@ -80,17 +81,22 @@ def get_client_for_topic(sensorTopic):
 def terminate_and_disconnect_client(sensorTopic):
     client = get_client_for_topic(sensorTopic)
     thread = topic_to_thread_map.get(sensorTopic)
-
+    
     if client and thread:
-        # 1. 스레드 종료
-        thread.join()  # 스레드 종료 대기
+        # 1. 루프 정지
+        client.loop_stop()  # 강제로 루프 정지
 
         # 2. 구독 해제
-        client.unsubscribe(sensorTopic)  # 해당 토픽 구독 해제
+        client.unsubscribe(sensorTopic)
 
         # 3. 연결 끊기
-        client.disconnect()  # MQTT 브로커 연결 끊기
+        client.disconnect()
 
+        # 4. 스레드 종료
+        if thread.is_alive():
+            thread.join()
         # 4. 클라이언트 및 스레드 정보 삭제
         del topic_to_client_map[sensorTopic]
-        del topic_to_thread_map[sensorTopic]
+        del topic_to_thread_map[sensorTopic]    
+
+

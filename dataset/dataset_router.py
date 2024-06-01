@@ -38,6 +38,7 @@ async def dataset_type():
 @app.get("/selection")
 async def dataset_selection(bucket_name: str = Query(...), measurement: str = Query(...),tag_key : str=Query(...),tag_value : str=Query(...)):
     try:
+        # bucket-detail -> 실제 데이터셋 (bucket_name,measurement,tag_key,tag_value) 요청.
         # HTTP 요청 보내기 (쿼리 파라미터로 데이터 포함)
         async with httpx.AsyncClient() as client:
             url = f"http://155.230.36.25:3001/bucket-detail/?bucket_name={bucket_name}&measurement={measurement}&tag_key={tag_key}&tag_value={tag_value}"
@@ -72,27 +73,3 @@ async def dataset_selection(bucket_name: str = Query(...), measurement: str = Qu
 
 
 
-@app.get("/option")
-async def dataset_option(datasetOption : dataset_schema.datasetOption):
-    try:
-        # HTTP 요청 보내기 (쿼리 파라미터로 데이터 포함)
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "http://155.230.36.25:3001/your-option-endpoint",
-                params= [("option",option) for option in datasetOption.option]
-                #params=[("name", name) for name in dataSelection.name]
-            )
-        
-        # 요청 결과 반환
-        if response.status_code == 200:
-            datasetReslut = response.json()
-            # datasetReslut 리스트인지 확인
-            if isinstance(datasetReslut, list):
-                return JSONResponse(content={"datasetReslut": datasetReslut})
-            else:
-                raise HTTPException(status_code=500, detail="Invalid response format: Expected a list")
-        else:
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch data from the server")
-    
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=500, detail=f"An error occurred while requesting data: {exc}")

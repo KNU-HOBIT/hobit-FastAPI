@@ -92,7 +92,11 @@ def list_all_chunk(req :ChunkReadReq, db:Session):
             ).all()
 
     # For debugging purposes, we print the result instead of returning it
+    result = 0
     for c in existing_chunks:
-        c.print_chunk()
+        # c.print_chunk()
+        result += c.chunkDuration
+    print(req.tag_key, req.tag_value, "누적운행량 : ", result)
+    return result
 
 

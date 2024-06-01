@@ -20,12 +20,12 @@ MarkupSafe==2.1.5
 mdurl==0.1.2
 numpy==1.26.4
 orjson==3.10.3
-py4j==0.10.9.5
+py4j==0.10.9.7
 pydantic==2.7.1
 pydantic_core==2.18.2
 Pygments==2.18.0
 PyMySQL==1.1.0
-pyspark==3.2.4
+pyspark==3.5.1
 python-dotenv==1.0.1
 python-multipart==0.0.9
 PyYAML==6.0.1
