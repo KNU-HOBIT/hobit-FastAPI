@@ -1,5 +1,5 @@
 
-‚
+Ý	
 hobit.proto"ò
 	Transport
 index (Rindex
@@ -42,4 +42,18 @@ workStatus
 
 bf_gps_lat  (RbfGpsLat
 
-blk_dvc_id! (	RblkDvcId
+blk_dvc_id! (	RblkDvcId"Ø
+Electric'
+building_number (	RbuildingNumber 
+temperature (Rtemperature
+rainfall (Rrainfall
+	windspeed (R	windspeed
+humidity (Rhumidity+
+power_consumption (RpowerConsumption
+month (Rmonth
+day (Rday
+time	 (Rtime
+
+total_area
+ (R	totalArea#
+building_type (RbuildingType

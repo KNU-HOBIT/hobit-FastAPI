@@ -1,8 +1,6 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import models 
-from database import engine
 
 from sensor import sensor_router
 from dataset import dataset_router
