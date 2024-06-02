@@ -88,9 +88,9 @@ def list_all_chunk(req :ChunkReadReq, db:Session):
         #  2.2.     chuck가 1개 이상이라면, 조회된 모든 chunk 중 가장 최근 chunk의 end_Ts를 last_chuck_ts라고 정의 
         print("Check if there's a gap in the chunks")
         last_chunk_end = max(chunk.endTs for chunk in existing_chunks)
-        # 2.3.1.    last_chuck_ts + 10분 >= ets ||> 조회한 모든 chunk 정보 return.
-        if last_chunk_end + 600000 < ets: # 
-            # 2.3.2.    last_chuck_ts + 10분  < ets  ||> last_chuck_ts ~ ets 범위로 make_chunk_in_elapsed 함수를 실행.
+        # 2.3.1.    ets - last_chuck_ts <= 10분   ||> 조회한 모든 chunk 정보 return.
+        if ets - last_chunk_end > 600000: # 
+            # 2.3.2.    ets - last_chuck_ts > 10분  ||> last_chuck_ts ~ ets 범위로 make_chunk_in_elapsed 함수를 실행.
             responce_result = data_by_time_range_req(
                 start=last_chunk_end, 
                 end=ets, 
@@ -99,6 +99,7 @@ def list_all_chunk(req :ChunkReadReq, db:Session):
                 tag_key=req.tag_key, 
                 tag_value=req.tag_value 
             )
+            
             if req.measurement == "transport": proto_msg_type = "Transport"
             elif req.measurement == "electric_dataset": proto_msg_type = "Electric"
             else: 

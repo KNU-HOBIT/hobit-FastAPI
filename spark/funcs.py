@@ -140,9 +140,6 @@ def train_model(
     label_option= 선택한 label 컬럼명 (string)
     
     '''
-    df.printSchema()
-    df.show(n=20, truncate=False)
-    feature_option_list = feature_option_list.split(',')
 
     columns_to_retain = [label_option] + feature_option_list
     df = df.select([c for c in df.columns if c in columns_to_retain])

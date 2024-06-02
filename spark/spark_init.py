@@ -1,5 +1,6 @@
 import multiprocessing
 import threading
+import signal
 import spark.chunk as chunk
 import spark.ml as ml
 
@@ -38,6 +39,21 @@ def initialize_chunk_spark():
 def initialize_ml_spark():
     global ml_spark
     ml_spark = Spark_Session(ml.ml_spark)
+
+def signal_handler(sig, frame):
+    print("Gracefully shutting down...")
+    if 'chunk_spark' in globals():
+        chunk_spark.spark_process.terminate()
+        chunk_spark.spark_process.join()
+    if 'ml_spark' in globals():
+        ml_spark.spark_process.terminate()
+        ml_spark.spark_process.join()
+    thread_chunk.join()
+    thread_ml.join()
+    print("Shutdown complete.")
+    exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 # Initialize both Spark sessions in separate threads
 thread_chunk = threading.Thread(target=initialize_chunk_spark)
