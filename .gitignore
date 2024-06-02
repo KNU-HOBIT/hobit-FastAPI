@@ -32,3 +32,5 @@ archive.zip
 
 #jars
 jars
+
+sparkToInflux.py

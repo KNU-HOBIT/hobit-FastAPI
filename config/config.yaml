@@ -3,8 +3,8 @@ spark_config:
   driver_host: "155.230.34.51"
   driver_bindAddress: "0.0.0.0"
   executor_instances: 3
-  executor_cores: 4
-  executor_memory: "8G"
+  executor_cores: 12
+  executor_memory: "24G"
   app_name: "FastAPI-Spark Integration"
   kafka_bootstrap_servers: "155.230.34.51:32100,155.230.34.52:32100,155.230.34.53:32100"
   kafka_jars: [

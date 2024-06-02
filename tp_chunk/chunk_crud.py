@@ -4,8 +4,8 @@ from datetime import datetime
 from models import Chunk
 from tp_chunk.chunk_schema import ChunkReadReq
 from request.request_crud import check_elapsed_req
-from spark.spark_crud import make_chunk_in_elapsed
-import spark.spark_init as spark_initiator
+from spark.spark_init import chunk_spark
+import spark.util as util
 from request.request_crud import data_by_time_range_req, all_of_data_req
 
 
@@ -41,15 +41,40 @@ def list_all_chunk(req :ChunkReadReq, db:Session):
             tag_key=req.tag_key, 
             tag_value=req.tag_value 
             )
-
-        # Generate chunks
-        make_chunk_in_elapsed( 
-            spark=spark_initiator.get_spark(), db=db, bucket=req.bucket,
-            measurement=req.measurement, 
-            tag_key=req.tag_key, tag_value=req.tag_value, 
-            start_time=responce_result.get("startTimeMillis", None), 
-            end_time=responce_result.get("endTimeMillis", None) 
+        
+        if req.measurement == "transport": proto_msg_type = "Transport"
+        elif req.measurement == "electric_dataset": proto_msg_type = "Electric"
+        else: 
+            print("Can't found PROTOBUF MESSAGE TYPE")
+            return
+            
+        chunk_job_arg = \
+        { 
+            "start_time" : responce_result.get("startTimeMillis", None),
+            "end_time" : responce_result.get("endTimeMillis", None), 
+            "topic" : responce_result.get("sendTopicStr", None), 
+            "proto_message_type": proto_msg_type,
+        }
+        
+        collect = util.process_spark_tasks(
+            chunk_spark.get_spark()[0],
+            chunk_spark.get_spark()[1], 
+            'PROCESS_CHUNK',
+            chunk_job_arg, )
+        
+        for row in collect:
+            new_chunk = Chunk(
+                bucket=req.bucket,
+                measurement=req.measurement,
+                tagKey=req.tag_key,
+                tagValue=req.tag_value,
+                startTs=row.start_timestamp_unix,
+                endTs=row.end_timestamp_unix,
+                chunkDuration=row.chunk_duration,
+                count=row['count']
             )
+            db.add(new_chunk)
+        db.commit()
 
         existing_chunks = db.query(Chunk).filter(
             Chunk.bucket == req.bucket,
@@ -66,21 +91,48 @@ def list_all_chunk(req :ChunkReadReq, db:Session):
         # 2.3.1.    last_chuck_ts + 10분 >= ets ||> 조회한 모든 chunk 정보 return.
         if last_chunk_end + 600000 < ets: # 
             # 2.3.2.    last_chuck_ts + 10분  < ets  ||> last_chuck_ts ~ ets 범위로 make_chunk_in_elapsed 함수를 실행.
-            responce_result = data_by_time_range_req(start=last_chunk_end, 
-                                                     end=ets, 
-                                                     bucket=req.bucket, 
-                                                     measurement=req.measurement, 
-                                                     tag_key=req.tag_key, 
-                                                     tag_value=req.tag_value )
-            
-            # Generate chunks for the missing range
-            make_chunk_in_elapsed(
-                spark=spark_initiator.get_spark(), db=db, bucket=req.bucket,
+            responce_result = data_by_time_range_req(
+                start=last_chunk_end, 
+                end=ets, 
+                bucket=req.bucket, 
                 measurement=req.measurement, 
-                tag_key=req.tag_key, tag_value=req.tag_value, 
-                start_time=responce_result.get("startTimeMillis", None), 
-                end_time=responce_result.get("endTimeMillis", None) 
+                tag_key=req.tag_key, 
+                tag_value=req.tag_value 
+            )
+            if req.measurement == "transport": proto_msg_type = "Transport"
+            elif req.measurement == "electric_dataset": proto_msg_type = "Electric"
+            else: 
+                print("Can't found PROTOBUF MESSAGE TYPE")
+                return
+            
+            
+            chunk_job_arg = \
+            { 
+                "start_time" : responce_result.get("startTimeMillis", None),
+                "end_time" : responce_result.get("endTimeMillis", None), 
+                "topic" : responce_result.get("sendTopicStr", None), 
+                "proto_message_type": proto_msg_type,
+            }
+            
+            collect = util.process_spark_tasks(
+                chunk_spark.get_spark()[0],
+                chunk_spark.get_spark()[1], 
+                'PROCESS_CHUNK',
+                chunk_job_arg, )
+
+            for row in collect:
+                new_chunk = Chunk(
+                    bucket=req.bucket,
+                    measurement=req.measurement,
+                    tagKey=req.tag_key,
+                    tagValue=req.tag_value,
+                    startTs=row.start_timestamp_unix,
+                    endTs=row.end_timestamp_unix,
+                    chunkDuration=row.chunk_duration,
+                    count=row['count']
                 )
+                db.add(new_chunk)
+            db.commit()
             
             existing_chunks = db.query(Chunk).filter(
                 Chunk.bucket == req.bucket,

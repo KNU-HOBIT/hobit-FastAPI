@@ -39,3 +39,17 @@ message Transport {
   required double bf_gps_lat = 32;
   required string blk_dvc_id = 33;
 }
+
+message Electric {
+  required string building_number = 1;
+  required float temperature = 2;
+  required float rainfall = 3;
+  required float windspeed = 4;
+  required float humidity = 5;
+  required float power_consumption = 6;
+  required float month = 7;
+  required float day = 8;
+  required float time = 9;
+  required float total_area = 10;
+  required float building_type = 11;
+}
