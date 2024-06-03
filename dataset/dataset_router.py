@@ -3,16 +3,24 @@ from pydantic import BaseModel
 from typing import List, Optional
 import httpx
 from starlette.responses import JSONResponse
-
-from dataset import dataset_schema
-
+from models import TrainResult
+from dataset import dataset_schema,dataset_crud
+from database import get_db
+from dataset.dataset_schema import MLList
+from sqlalchemy.orm import Session
 
 
 app=APIRouter(
     prefix="/dataset"
 )
 
+@app.get("/MLList")
+async def ML_list(db:Session = Depends(get_db)):
+    return dataset_crud.list_All_ML(db)
 
+@app.get("/ML")
+async def ML_read(mlStart : int,db:Session = Depends(get_db)):
+    return dataset_crud.get_ML(db,mlStart)
 
 @app.get("/type")
 async def dataset_type():
