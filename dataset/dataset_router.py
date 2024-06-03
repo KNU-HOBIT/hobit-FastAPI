@@ -14,11 +14,11 @@ app=APIRouter(
     prefix="/dataset"
 )
 
-@app.get("/MLList")
+@app.get("/ml-list")
 async def ML_list(db:Session = Depends(get_db)):
     return dataset_crud.list_All_ML(db)
 
-@app.get("/ML")
+@app.get("/ml")
 async def ML_read(mlStart : int,db:Session = Depends(get_db)):
     return dataset_crud.get_ML(db,mlStart)
 
