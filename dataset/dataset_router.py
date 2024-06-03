@@ -18,9 +18,13 @@ app=APIRouter(
 async def ML_list(db:Session = Depends(get_db)):
     return dataset_crud.list_All_ML(db)
 
-@app.get("/ml")
-async def ML_read(mlStart : int,db:Session = Depends(get_db)):
-    return dataset_crud.get_ML(db,mlStart)
+@app.get("/ml/{mlStart}")
+def get_ML(mlStart: int, db: Session = Depends(get_db)):
+    ML = db.query(TrainResult).filter(TrainResult.mlStart == mlStart).first()
+    print(ML)
+    if ML is None:
+        raise HTTPException(status_code=404, detail="ML data not found")
+    return ML
 
 @app.get("/type")
 async def dataset_type():

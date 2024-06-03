@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 
-from spark.spark_schema import MLReq
-from spark.spark_crud import do_ml
+# from spark.spark_schema import MLReq
+# from spark.spark_crud import do_ml
 from starlette.responses import JSONResponse
 import json
 

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from spark.spark_schema import MLReq
-from spark.spark_init import ml_spark
-import spark.util as util
+# from spark.spark_schema import MLReq
+# from spark.spark_init import ml_spark
+# import spark.util as util
 from request.request_crud import data_by_time_range_req
 from models import TrainResult
 import time
