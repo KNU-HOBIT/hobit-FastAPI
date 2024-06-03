@@ -9,12 +9,12 @@ class datasetSelection(BaseModel):
     measurement : str
 
 class MLList(BaseModel):
-    bucket = str
-    measurement = str
-    tagKey = str
-    tagValue = str
-    mlStart = int
-    mlEnd = int
+    bucket : str
+    measurement : str
+    tagKey : str
+    tagValue : str
+    mlStart : int
+    mlEnd : int
     
 class getML(BaseModel):
-    mlStart =int
+    mlStart : int
