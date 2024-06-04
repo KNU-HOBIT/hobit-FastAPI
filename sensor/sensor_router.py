@@ -29,12 +29,12 @@ async def disconnection_data(db: Session = Depends(get_db)):
 async def read_data(db: Session = Depends(get_db)):
 
     # 1. DB에서 모든 센서 객체 가져오기
-    sensors = sensor_crud.list_all_sensor_id(db)
+    sensors = sensor_crud.list_all_sensor(db)
     print(sensors)  # 센서 객체 리스트 출력 (테스트용)
 
     # 2. 리스트를 돌면서
     for sensor in sensors:
-        sensorTopic = sensor_crud.get_sensor_topic(sensor.id, db)  # 센서 객체의 ID 사용
+        sensorTopic = sensor_crud.get_sensor_topic(sensor.sensorId, db) # 센서 객체의 ID 사용
         mqtt_service.start_thread(sensorTopic)  # 스레드 시작
 
     return StreamingResponse(mqtt_service.sendDataStreaming(),media_type="text/event-stream")
