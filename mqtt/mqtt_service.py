@@ -48,9 +48,17 @@ def on_message(client, userdata, message):
 
         # 프로토콜 버퍼 메시지를 문자열로 변환
         message_string = convert_proto_to_string(transport)
-
+        
+        message_string=message_string.replace('nan', 'null')
+        
+        # 메시지를 JSON 형식으로 변환
+        json_message = json.dumps({"message": message_string})
+        
         # 문자열 형태의 메시지를 메시지 큐에 추가
-        message_queue.put(message_string)
+        message_queue.put(json_message)
+        
+        # 문자열 형태의 메시지를 메시지 큐에 추가
+        # message_queue.put(message_string)
 
         print("디코딩된 프로토콜 버퍼 메시지를 문자열로 변환하여 메시지 큐에 추가했습니다.  ",message_string)
         print("메세지 큐 크기 확인:", message_queue.qsize())
