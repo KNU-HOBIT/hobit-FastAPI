@@ -15,6 +15,12 @@ def insert_sensor(new_sensor : NewSensor,db:Session):
     db.commit()
     return sensor.id
 
+
+def list_all_sensor_id(db: Session):
+    sensors = db.query(Sensor).filter(Sensor.sensorDeleteYN=='Y').all()  # 전체 센서 객체 조회
+    return sensors  # 센서 객체 리스트 반환
+
+
 def list_all_sensor(db:Session):
     lists=db.query(Sensor).filter(Sensor.sensorDeleteYN=='Y').all()
     return [SensorList(sensorId=row.id,sensorName=row.sensorName,sensorTopic=row.sensorTopic,sensorType=row.sensorType,sensorEqpId=row.sensorEqpId) for row in lists]
