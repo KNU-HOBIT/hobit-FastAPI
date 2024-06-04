@@ -39,32 +39,45 @@ def convert_proto_to_string(transport):
 
 
 def on_message(client, userdata, message):
-    time.sleep(1)
-    
-    # 프로토콜 버퍼 메시지 디코딩
-    transport = hobit_pb2.Transport()
-    transport.ParseFromString(message.payload)
+    time.sleep(2)
 
-    # 프로토콜 버퍼 메시지를 문자열로 변환
-    message_string = convert_proto_to_string(transport)
+    try:
+        # 프로토콜 버퍼 메시지 디코딩
+        transport = hobit_pb2.Transport()
+        transport.ParseFromString(message.payload)
 
-    # 문자열 형태의 메시지를 메시지 큐에 추가
-    message_queue.put(message_string)
+        # 프로토콜 버퍼 메시지를 문자열로 변환
+        message_string = convert_proto_to_string(transport)
 
-    print("디코딩된 프로토콜 버퍼 메시지를 문자열로 변환하여 메시지 큐에 추가했습니다.  ",message_string)
-    print("메세지 큐 크기 확인:", message_queue.qsize())
+        # 문자열 형태의 메시지를 메시지 큐에 추가
+        message_queue.put(message_string)
 
+        print("디코딩된 프로토콜 버퍼 메시지를 문자열로 변환하여 메시지 큐에 추가했습니다.  ",message_string)
+        print("메세지 큐 크기 확인:", message_queue.qsize())
+    except Exception as e:
+        print("예외가 발생했습니다:", e)
 
 def create_mqtt_client(sensorTopic):
-    # MQTT Producer (Client) 인스턴스 생성
+    print(username, password, port, broker_address)
+    print(sensorTopic)
     client = mqtt.Client()
     # 유저 이름과 비밀번호 설정
     client.username_pw_set(username, password)
-    client.on_message=on_message
+    print(client)
+    
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+            print("MQTT 클라이언트가 브로커에 성공적으로 연결되었습니다.")
+        else:
+            print(f"MQTT 클라이언트가 브로커에 연결하는 동안 오류가 발생했습니다. 코드: {rc}")
+
+    client.on_connect = on_connect
+    client.on_message = on_message
+
     # MQTT 브로커에 연결
     client.connect(broker_address, port, 60)
 
-    client.subscribe(sensorTopic)  
+    client.subscribe(sensorTopic)
     thread = threading.Thread(target=client.loop_forever)
     thread.start()
     topic_to_thread_map[sensorTopic] = thread
