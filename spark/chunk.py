@@ -39,7 +39,7 @@ def chunk_spark(task_queue, result_queue):
         if task == 'PROCESS_CHUNK':
             result_queue.put(
                 sf.chunk_job(
-                    sf.read_from_kafka_unbase64_from_protobuf(
+                    sf.read_from_kafka_protobuf(
                         chunk_spark, 
                         args.get("start_time"),
                         args.get("end_time"),

@@ -27,6 +27,12 @@ async def data_by_time_range(
         tag_value=tag_value,
         send_topic=send_topic
     )
-    result = list_all_chunk(req, db)
-    return JSONResponse(content=result)
+    try:
+        result = list_all_chunk(req, db)
+        return JSONResponse(content=result)
+    except Exception as e:
+        print("failed:", e)
+        return JSONResponse(content=None, status_code=500)
+
+    
     

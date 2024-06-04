@@ -40,14 +40,18 @@ async def train_model(
         label_option=label_option,
     )
 
-    result = do_ml(req, db)
-    '''
-    result = {
-        "mse" : mse_eval.evaluate(prediction),
-        "rmse" : rmse_eval.evaluate(prediction),
-        "r2" : r2_eval.evaluate(prediction),
-        "power_consumption_list" : finish_pdf[label_option].tolist(),
-        "prediction_list" : finish_pdf['prediction'].tolist(),
-    }
-    '''
-    return JSONResponse(content=result)
+    try:
+        result = do_ml(req, db)
+        '''
+        result = {
+            "mse" : mse_eval.evaluate(prediction),
+            "rmse" : rmse_eval.evaluate(prediction),
+            "r2" : r2_eval.evaluate(prediction),
+            "power_consumption_list" : finish_pdf[label_option].tolist(),
+            "prediction_list" : finish_pdf['prediction'].tolist(),
+        }
+        '''
+        return JSONResponse(content=result)
+    except Exception as e:
+        print("failed:", e)
+        return JSONResponse(content=None, status_code=500)

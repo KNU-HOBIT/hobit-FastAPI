@@ -7,9 +7,14 @@ from pyspark.sql.window import Window
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import RandomForestRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
+import pandas as pd
 
 from request.request_crud import data_by_time_range_req
 
+
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StringType
+from pyspark.ml.feature import StringIndexer
 
 def read_from_kafka_json(spark, start_time, end_time, topic):
 
@@ -33,7 +38,7 @@ def read_from_kafka_json(spark, start_time, end_time, topic):
 
     return df
 
-def read_from_kafka_unbase64_from_protobuf(spark, start_time, end_time ,topic, proto_message_type):
+def read_from_kafka_protobuf(spark, start_time, end_time ,topic, proto_message_type):
 
     df = (
         spark.read.format("kafka")
@@ -47,8 +52,7 @@ def read_from_kafka_unbase64_from_protobuf(spark, start_time, end_time ,topic, p
     
     df = (
         df
-        .selectExpr("CAST(value AS STRING) as value", "CAST(timestamp AS STRING) as createTime")
-        .withColumn("value", unbase64("value"))
+        .selectExpr("value", "CAST(timestamp AS STRING) as createTime")
         .withColumn("decoded_value", from_protobuf("value", proto_message_type, descFilePath="proto/hobit.desc"))
         .select("createTime", "decoded_value.*")
     )
@@ -140,12 +144,21 @@ def train_model(
     label_option= 선택한 label 컬럼명 (string)
     
     '''
+    
+    df.show(n=1, truncate=False)
+    df.printSchema()
 
     columns_to_retain = [label_option] + feature_option_list
     df = df.select([c for c in df.columns if c in columns_to_retain])
     
-    train_df, valid_df = split_spark_dataframe(df, train_ratio)
-
+    for feature in feature_option_list:
+        if dict(df.dtypes)[feature] == 'string':
+            indexer = StringIndexer(inputCol=feature, outputCol=f"{feature}_index")
+            df = indexer.fit(df).transform(df)
+            df = df.drop(feature).withColumnRenamed(f"{feature}_index", feature)
+            
+    train_df, valid_df = split_spark_dataframe(df, train_ratio)  
+    
     #feature 벡터화
     feature_cols_t = feature_option_list
     assembler = VectorAssembler(inputCols = feature_cols_t, outputCol = "features")
@@ -174,13 +187,15 @@ def train_model(
     finish_sdf = prediction.select(label_option, "prediction")
     
     finish_pdf = finish_sdf.toPandas()
+    
+    finish_pdf = finish_pdf.where((pd.notnull(finish_pdf)), None)
 
     result = {
         "mse" : mse_eval.evaluate(prediction),
         "rmse" : rmse_eval.evaluate(prediction),
         "r2" : r2_eval.evaluate(prediction),
-        "power_consumption_list" : finish_pdf[label_option].tolist(),
-        "prediction_list" : finish_pdf['prediction'].tolist(),
+        "powerConsumptionList" : finish_pdf[label_option].tolist(),
+        "predictionList" : finish_pdf['prediction'].tolist(),
     }
 
     return result

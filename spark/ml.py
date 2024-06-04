@@ -40,7 +40,7 @@ def ml_spark(task_queue, result_queue):
         if task == 'PROCESS_ML':
             result_queue.put(
                 sf.train_model(
-                    sf.read_from_kafka_unbase64_from_protobuf(
+                    sf.read_from_kafka_protobuf(
                         ml_spark, 
                         args.get("start_time"),
                         args.get("end_time"),

@@ -55,8 +55,8 @@ def do_ml(req :MLReq, db:Session):
         "mse" : mse_eval.evaluate(prediction),
         "rmse" : rmse_eval.evaluate(prediction),
         "r2" : r2_eval.evaluate(prediction),
-        "power_consumption_list" : finish_pdf[label_option].tolist(),
-        "prediction_list" : finish_pdf['prediction'].tolist(),
+        "powerConsumptionList" : finish_pdf[label_option].tolist(),
+        "predictionList" : finish_pdf['prediction'].tolist(),
     }
     '''
     # TrainResult 객체 생성 및 데이터베이스에 저장
@@ -76,8 +76,8 @@ def do_ml(req :MLReq, db:Session):
         mse=result.get('mse', None),
         rmse=result.get('rmse', None),
         r2=result.get('r2', None),
-        powerConsumptionList=result.get('power_consumption_list', []),
-        predictionList=result.get('prediction_list', [])
+        powerConsumptionList=result.get('powerConsumptionList', []),
+        predictionList=result.get('predictionList', [])
     )
     db.add(train_result)
     db.commit()
