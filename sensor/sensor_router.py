@@ -30,7 +30,7 @@ async def read_data(db: Session = Depends(get_db)):
 
     # 1. DB에서 모든 센서 객체 가져오기
     sensors = sensor_crud.list_all_sensor(db)
-    print(sensors)  # 센서 객체 리스트 출력 (테스트용)
+    #print(sensors)  # 센서 객체 리스트 출력 (테스트용)
 
     # 2. 리스트를 돌면서
     for sensor in sensors:
