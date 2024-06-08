@@ -98,27 +98,30 @@ spark_config:
 
 ## Installation 
 
-
+```
 1.Clone the repository:
  git clone https://github.com/KNU-HOBIT/hobit-FastAPI.git
 
 2.Install the dependencies:
  pip install -r ubuntu_requirements.txt
+```
 
-#Usage
+#  Usage
 서버를 실행하려면 아래 명령어를 사용해 main.py를 실행하면 됩니다. 
+```
 uvicorn main:app --host 0.0.0.0 --port 8080
+```
 
-
-##Protobuf
+##  Protobuf
 
 프로젝트는 효율적인 데이터 직렬화를 위해 Protocol Buffers (Protobuf)를 사용합니다.
 프로토콜 버퍼 스키마는 hobit.proto 파일에 정의되어 있습니다.
 
 프로토콜 버퍼 파일을 Python 코드로 컴파일하려면 아래 명령어를 실행하세요:
 
+```
 protoc --python_out=. ./hobit.proto
-
+```
 
 
 # Main Function
