@@ -59,11 +59,14 @@
 
 ##Configuration
 프로젝트의 설정 파일은 `config` 디렉토리에 위치하며, 다음과 같은 파일들로 구성됩니다:
+```
 ├── config
 │ ├── config.yaml
 │ └── config_loader.py
+```
 
 해당 파일은 spark와 mqtt broker과 연결을 위한 설정 파일입니다.
+
 ```
 spark_config:
   master_url: "스파크 URL"
