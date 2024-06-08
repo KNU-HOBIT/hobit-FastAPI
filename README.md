@@ -1,5 +1,5 @@
 ## Configuration File 
-'''
+```
 ├── __pycache__
 │   ├── app.cpython-311.pyc
 │   ├── database.cpython-311.pyc
@@ -55,7 +55,7 @@
 │   ├── chunk_router.py
 │   └── chunk_schema.py
 └── ubuntu_requirements.txt
-'''
+```
 
 ##Configuration
 프로젝트의 설정 파일은 `config` 디렉토리에 위치하며, 다음과 같은 파일들로 구성됩니다:
@@ -64,7 +64,7 @@
 │ └── config_loader.py
 
 해당 파일은 spark와 mqtt broker과 연결을 위한 설정 파일입니다.
-
+```
 spark_config:
   master_url: "스파크 URL"
   driver_host: "driver host"
@@ -88,7 +88,7 @@ spark_config:
   mqtt_port: 30083              
   mqtt_username: 'admin'        
   mqtt_password: 'password'  
-
+```
 
 ##Installation 
 
