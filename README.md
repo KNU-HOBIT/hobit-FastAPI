@@ -1,5 +1,5 @@
 ## Configuration File 
-```markdown
+'''
 ├── __pycache__
 │   ├── app.cpython-311.pyc
 │   ├── database.cpython-311.pyc
@@ -55,6 +55,7 @@
 │   ├── chunk_router.py
 │   └── chunk_schema.py
 └── ubuntu_requirements.txt
+'''
 
 ##Configuration
 프로젝트의 설정 파일은 `config` 디렉토리에 위치하며, 다음과 같은 파일들로 구성됩니다:
