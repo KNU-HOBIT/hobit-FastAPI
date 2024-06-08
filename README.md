@@ -1,4 +1,5 @@
 ## Configuration File 
+
 ```
 ├── __pycache__
 │   ├── app.cpython-311.pyc
@@ -57,8 +58,10 @@
 └── ubuntu_requirements.txt
 ```
 
-##Configuration
+##  Configuration
+
 프로젝트의 설정 파일은 `config` 디렉토리에 위치하며, 다음과 같은 파일들로 구성됩니다:
+
 ```
 ├── config
 │ ├── config.yaml
@@ -93,7 +96,8 @@ spark_config:
   mqtt_password: 'password'  
 ```
 
-##Installation 
+## Installation 
+
 
 1.Clone the repository:
  git clone https://github.com/KNU-HOBIT/hobit-FastAPI.git
